@@ -1,25 +1,20 @@
 import Apple from "./apple.js"
 import GameController from "./game-controller.js"
 import Snake from "./snake.js"
-import Direction from "./direction.js"
 
 class GameGui {
     /** @type {HTMLElement} */
     elementWhereToInsertGui
     gameController
     /** @type {HTMLCanvasElement} */
-    mainCanvas
+    canvas
+    /** @type {CanvasRenderingContext2D} */
+    ctx
     /** @type {Snake} */
     snake
-    /** @type {HTMLCanvasElement} */
-    snakeCanvas
     /** @type {Apple} */
     apple
-    /** @type {HTMLCanvasElement} */
-    appleCanvas
     appleImg
-    /** @type {Direction} */
-    direction
     /** @type {Map<String,HTMLElement} */
     widthGame
     heightGame
@@ -31,14 +26,28 @@ class GameGui {
     ])
 
 
-    constructor(elementWhereToInsertGui, snake, apple, appleImg, direction, widthGame = 1000, heightGame = 600) {
+    constructor(elementWhereToInsertGui, initialSnakeLength = 40, thickSnake = 20, appleImg = 'assets/images/apple.png', widthGame = 1000, heightGame = 600, vxSnake = 2, vySnake = 2) {
         this.elementWhereToInsertGui = elementWhereToInsertGui;
-        this.gameController = new GameController(this);
-        this.snake = snake;
-        this.apple = apple;
-        this.direction = direction;
         this.widthGame = widthGame;
         this.heightGame = heightGame;
+
+        this.snake = this.initSnake(vxSnake, vySnake, initialSnakeLength, thickSnake);
+        this.apple = this.initApple(this.snake);
+
+        this.appleImg = new Image(this.apple.size, this.apple.size);
+        this.appleImg.src = appleImg;
+
+        this.gameController = new GameController(this);
+    }
+
+    initSnake(vxSnake, vySnake, initialSnakeLength, thickSnake) {
+        return new Snake(this.widthGame / 2, this.heightGame / 2, vxSnake, vySnake, initialSnakeLength, thickSnake);
+    }
+
+    initApple(snake) {
+        let apple = new Apple(0, 0, snake.thick);
+        apple.generateNewRandomPosition(this.widthGame, this.heightGame, snake);
+        return apple;
     }
 
     printMenu() {
@@ -53,6 +62,7 @@ class GameGui {
         const pauseBtn = document.createElement("button");
         pauseBtn.textContent = "Pause";
         pauseBtn.id = "pause-btn";
+        pauseBtn.hidden = true; // NOTE: Hide until game is not started
 
         const scoreDiv = document.createElement("div");
         scoreDiv.textContent = "Score: ";
@@ -64,61 +74,86 @@ class GameGui {
 
         this.htmlElements.set("startBtn", startBtn);
         this.htmlElements.set("pauseBtn", pauseBtn);
+        this.htmlElements.set("scoreSpan", scoreSpan);
         this.htmlElements.set("scoreDiv", scoreDiv);
 
         const rowMenuDiv = document.createElement("div");
         rowMenuDiv.id = "row-menu";
 
         this.htmlElements.forEach(elmt => {
-            rowMenuDiv.appendChild(elmt)
+            // NOTE: Don't add score-result span which is already in score div element
+            if (elmt.id != "score-result") {
+                rowMenuDiv.appendChild(elmt);
+            }
         });
 
         this.elementWhereToInsertGui.appendChild(title);
         this.elementWhereToInsertGui.appendChild(rowMenuDiv);
+
+        this.gameController.addListerners();
     }
 
     printGame() {
-        // NOTE: Create a canvas for the whole game and put inside the snake and apple canvas
-        this.mainCanvas = document.createElement('canvas');
-        this.mainCanvas.id = "main-canvas";
-        this.mainCanvas.width = this.widthGame;
-        this.mainCanvas.height = this.heightGame;
+        // NOTE: Create a canvas for the whole game and put inside the snake and apple
+        this.canvas = document.createElement('canvas');
+        this.canvas.id = "main-canvas";
+        this.canvas.width = this.widthGame;
+        this.canvas.height = this.heightGame;
+        this.ctx = this.canvas.getContext('2d');
 
-        // NOTE: Create a canvas for the snake and display it
+        // NOTE: Print every part of the snake into the canvas
         this.printSnake();
 
-        // NOTE: Create a canvas for the apple and display it
-        this.printApple();
-
-        this.elementWhereToInsertGui.appendChild(this.mainCanvas);
+        // NOTE: Print the apple into the canvas
+        this.appleImg.onload = () => {
+            this.printApple();
+            // NOTE: Only when apple is loaded, then insert the canvas to the page
+            this.elementWhereToInsertGui.appendChild(this.canvas);
+        };
     }
 
-    printSnake() {
-        if (!this.snakeCanvas) {
-            this.snakeCanvas = document.createElement('canvas');
+    printSnake(printOnlyLastDirection = false) {
+        // NOTE Create each part of the snake depending on his directions
+        let i = 0;
+        if (printOnlyLastDirection) {
+            i = this.snake.directions.length - 2; // NOTE: Start -2 to allow print a different color for the head of the snake
         }
-        const snakeCtx = this.snakeCanvas.getContext('2d');
-        const mainCtx = this.mainCanvas.getContext('2d');
 
-        // NOTE Create snack with length // TODO: Add rect when snake is moving and remove the old last move rect 
-        snakeCtx.beginPath();
-        snakeCtx.rect(0, 0, this.snake.length, 20);
-        snakeCtx.fillStyle = "green";
-        snakeCtx.fill();
-        snakeCtx.closePath();
+        for (i; i < this.snake.directions.length; i++) {
+            if (i === this.snake.directions.length - 1) {
+                // NOTE: Create the head of the snake
+                this.ctx.fillStyle = "blue";
+            } else {
+                this.ctx.fillStyle = "green";
+            }
+            this.ctx.fillRect(this.snake.directions[i].position.x, this.snake.directions[i].position.y, this.snake.thick, this.snake.thick);
+        }
+    }
 
-        mainCtx.drawImage(this.snakeCanvas, this.mainCanvas.width / 2, this.mainCanvas.height / 2);
+    clearRectOfSnake(clearOnlyFirstDirection = false) {
+        if (clearOnlyFirstDirection) {
+            // NOTE: Clear only first direction for performance (instead of the whole snake)
+            this.ctx.clearRect(this.snake.directions[0].position.x, this.snake.directions[0].position.y, this.snake.thick, this.snake.thick);
+        } else {
+            // NOTE: Clear the whole snake
+            for (let i = 0; i < this.snake.directions.length; i++) {
+                this.ctx.clearRect(this.snake.directions[i].position.x, this.snake.directions[i].position.y, this.snake.thick, this.snake.thick);
+            }
+        }
     }
 
     printApple() {
-        if (!this.appleCanvas) {
-            this.appleCanvas = document.createElement('canvas');
-        }
-        const appleCtx = this.appleCanvas.getContext('2d');
-        const mainCtx = this.mainCanvas.getContext('2d');
-
-        mainCtx.drawImage(this.appleCanvas, this.mainCanvas.width / 2, this.mainCanvas.height / 2);
+        this.ctx.drawImage(this.appleImg, this.apple.position.x, this.apple.position.y, this.apple.size, this.apple.size);
     }
+
+    clearRectOfApple() {
+        this.ctx.clearRect(this.apple.position.x, this.apple.position.y, this.apple.size, this.apple.size);
+    }
+
+    printGameOver() {
+        alert("Game Over! Your score : " + this.snake.score);
+    }
+
 }
 
 export default GameGui;
