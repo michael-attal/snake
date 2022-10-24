@@ -66,7 +66,7 @@ class Direction {
     }
 
     /**
-     * 
+     * TODO: Should be implemented inside the snake class instead of here
      * @param {Array<Direction>} previousDirections 
      * @returns {bool}
      */

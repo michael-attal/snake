@@ -93,16 +93,21 @@ class GameController {
 
     handleDirection(key) {
         let displayGameOver = false;
-        // NOTE: Update canvas with only to the new direction and clear only the first position of snack
-        const clearOnlyFirstDirection = true;
-        this.gameGui.clearRectOfSnake(clearOnlyFirstDirection);
-        const printOnlyLastDirection = true;
-        this.gameGui.printSnake(printOnlyLastDirection);
+        // NOTE: Update canvas with only to the new direction and clear only the first position of snack - NOT USED ANYMORE
+        // const clearOnlyFirstDirection = true;
+        // this.gameGui.clearRectOfSnake(clearOnlyFirstDirection);
+        this.gameGui.ctx.clearRect(0, 0, this.gameGui.widthGame, this.gameGui.heightGame); // NOTE: #RoiSuggestion As Roi said in big game it's better to clean the whole screen and draw every object for each frame instead of calculate each object position and then clean these positions.
+        this.gameGui.printApple(); // NOTE: We have to print again the apple if we clear the whole canvas.
+
+        // const printOnlyLastDirection = true;
+        // this.gameGui.printSnake(printOnlyLastDirection); // NOTE: Because we are not more only clear the last position we should also print the whole snake and not just the head.
+        this.gameGui.printSnake();
 
         let newDirection = new Direction(this.gameGui.snake, key);
 
         if (newDirection.isValidPosition(this.gameGui.widthGame, this.gameGui.heightGame)) {
             if (newDirection.directionName != Direction.oppositeDirections.get(this.gameGui.snake.directions[this.gameGui.snake.directions.length - 1].directionName)) {
+
                 if (newDirection.isHittingHimSelf(this.gameGui.snake.directions) === false) {
                     this.gameGui.snake.position.x = newDirection.position.x;
                     this.gameGui.snake.position.y = newDirection.position.y;
@@ -121,10 +126,12 @@ class GameController {
                             this.gameGui.snake.position.x = newDirectionApple.position.x;
                             this.gameGui.snake.position.y = newDirectionApple.position.y;
                             this.gameGui.snake.directions.push(newDirectionApple);
-                            this.gameGui.printSnake(printOnlyLastDirection, true);
+                            // this.gameGui.printSnake(printOnlyLastDirection, true); // NOTE: Commented for same reason as previously said in note #RoiSuggestion
+                            this.gameGui.ctx.clearRect(0, 0, this.gameGui.widthGame, this.gameGui.heightGame);
+                            this.gameGui.printSnake();
                         }
 
-                        this.gameGui.clearRectOfApple();
+                        // this.gameGui.clearRectOfApple(); // NOTE:  Commented for same reason as previously said in note #RoiSuggestion
                         // NOTE: Generate and print a new apple.
                         this.gameGui.apple.generateNewRandomPosition(this.gameGui.widthGame, this.gameGui.heightGame, this.gameGui.snake);
                         this.gameGui.printApple();
