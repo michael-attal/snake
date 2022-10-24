@@ -119,7 +119,7 @@ class GameController {
                         this.gameGui.snake.score += 1;
                         this.gameGui.htmlElements.get("scoreSpan").textContent = this.gameGui.snake.score;
 
-                        // NOTE: Add the size of the apple to the front of the snake (it take the size where the apple was)
+                        // NOTE: Add the size of the apple to the front of the snake (it take the size where the apple was) - We can also just not shift previous direction instead of this.
                         for (let i = 0; i < Math.floor(this.gameGui.apple.size / this.gameGui.snake.velocity.x); i++) {
                             this.gameGui.snake.length += 1;
                             let newDirectionApple = new Direction(this.gameGui.snake, key);
